@@ -1,0 +1,32 @@
+# .dockerignore
+
+# 忽略版本控制目录和文件
+.git
+.gitignore
+.gitattributes
+
+# 忽略 Docker 相关的文件，它们不需要存在于镜像内部
+.dockerignore
+# docker-compose.yml
+# Dockerfile
+# README.md
+
+# IDE 和编辑器相关的配置目录
+.vscode/
+.idea/
+
+# Python 虚拟环境目录
+.venv
+venv
+env
+
+# Python 缓存文件和目录
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 日志文件和目录
+# 日志应该由运行时生成或通过数据卷挂载，而不应被打包进镜像
+logs/
+*.log

@@ -1,0 +1,60 @@
+{
+    "ConfigVersion": 10,
+    "Checksum": "35ae131d05be206b6a83604a1f41ebf15bd704481b7b503b5058154acdc0a6d8",
+    "DEVICE": [
+        {
+            "DeviceType": "HAILO8",
+            "RuntimeAgent": "HAILORT",
+            "SupportedDeviceTypes": "HAILORT/HAILO8"
+        }
+    ],
+    "PRE_PROCESS": [
+        {
+            "InputN": 1,
+            "InputH": 640,
+            "InputW": 640,
+            "InputC": 3,
+            "InputQuantEn": true
+        }
+    ],
+    "MODEL_PARAMETERS": [
+        {
+            "ModelPath": "scrfd_10g--640x640_quant_hailort_hailo8_1.hef"
+        }
+    ],
+    "POST_PROCESS": [
+        {
+            "OutputPostprocessType": "Detection",
+            "LabelsPath": "labels_scrfd_10g.json",
+            "Strides": [
+                8,
+                16,
+                32
+            ],
+            "AnchorConfig": {
+                "MinSizes": [
+                    [
+                        16,
+                        32
+                    ],
+                    [
+                        64,
+                        128
+                    ],
+                    [
+                        256,
+                        512
+                    ]
+                ],
+                "Steps": [
+                    8,
+                    16,
+                    32
+                ]
+            },
+            "OutputNMSThreshold": 0.6,
+            "OutputConfThreshold": 0.3,
+            "PythonFile": "HailoDetectionScrfd.py"
+        }
+    ]
+}

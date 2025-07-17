@@ -1,0 +1,4 @@
+$a2f88aa2-4392-46d1-b278-d04b80bc7b9b²ê$uuid ÿÿÿÿÿÿÿÿÿ*string8Zdefault=vector ÿÿÿÿÿÿÿÿÿ*fixed_size_list:float:51208Zdefault&name ÿÿÿÿÿÿÿÿÿ*string8Zdefault$sn ÿÿÿÿÿÿÿÿÿ*string8Zdefault,
+image_path ÿÿÿÿÿÿÿÿÿ*string8Zdefault;registration_time ÿÿÿÿÿÿÿÿÿ*timestamp:us:-8Zdefault"'
+lance.auto_cleanup.older_than14days"!
+lance.auto_cleanup.interval20

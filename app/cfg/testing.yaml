@@ -1,0 +1,24 @@
+# app/cfg/testing.yaml
+# 测试环境特定配置。
+# 这些配置会覆盖 default.yaml 中的同名项。
+
+app:
+  title: "测试环境 - FastAPI应用"
+  debug: true # 测试环境通常也需要开启调试，以便查看详细的错误信息。
+
+server:
+  host: "127.0.0.1" # 测试环境也只监听本地回环地址。
+  port: 8003 # 测试环境使用不同端口，避免与开发或生产环境冲突。
+  reload: false # 测试环境通常不开启热重载，测试脚本执行完毕即停止。
+
+logging:
+  level: "WARNING" # 测试环境日志级别可以设置为 WARNING，减少冗余输出，只关注重要警告和错误。
+  file_path: "./logs/test.log" # 测试日志单独存放，与开发和生产日志隔离。
+
+database:
+  url: "sqlite:///./data/test.db" # 测试环境使用独立的 SQLite 数据库文件，确保测试的隔离性。
+  echo: true # 测试时可能需要打印 SQL 语句，以便调试数据库操作。
+
+security:
+  secret_key: "test_secret_key_for_automated_testing" # 测试环境密钥，用于单元测试或集成测试。
+  access_token_expire_minutes: 5 # 测试令牌过期时间可以短一点，快速模拟过期场景。

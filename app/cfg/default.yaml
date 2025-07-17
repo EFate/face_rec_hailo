@@ -1,0 +1,29 @@
+# app/cfg/default.yaml
+# 所有环境的通用默认配置。
+# 任何没有在特定环境 YAML 文件或环境变量中覆盖的配置项，都将使用这里的值。
+
+app:
+  title: "通用服务"
+  description: "这是一个基于FastAPI构建的通用应用，提供基础服务。可作为大型项目的基础架构。"
+  version: "1.0.0"
+  debug: false # 默认关闭调试模式，除非特定环境（如开发、测试）开启。
+  video_width: 640 # 默认视频帧宽度
+  video_height: 480 # 默认视频帧高度
+
+server:
+  host: "0.0.0.0" # 默认监听所有网络接口。
+  port: 8000      # 默认端口。
+  reload: false   # 默认不开启热重载，只在开发环境开启。
+
+logging:
+  level: "INFO" # 默认信息级别日志，适合生产环境。
+  # 日志文件路径使用相对路径，config.py 中的 Pydantic 字段会将其解析为绝对路径。
+  file_path: "./logs/app.log"
+  max_bytes: 10485760 # 10 MB (10 * 1024 * 1024 字节)
+  backup_count: 5 # 保留 5 个旧的日志文件备份。
+
+security:
+  # 默认密钥，在生产环境中务必通过环境变量或其他安全机制覆盖。
+  secret_key: "default_secret_key_please_change_this_in_production_or_environment_variable"
+  algorithm: "HS256" # JWT 签名算法。
+  access_token_expire_minutes: 30 # 访问令牌过期时间，默认 30 分钟。

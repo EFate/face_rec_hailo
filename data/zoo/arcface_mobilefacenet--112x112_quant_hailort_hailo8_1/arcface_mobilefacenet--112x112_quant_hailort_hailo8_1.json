@@ -1,0 +1,32 @@
+{
+    "ConfigVersion": 10,
+    "Checksum": "0bdafa8dfa44b74247811b4b6cfc1822897b933c041f93cbd4a76bee3fdab36f",
+    "DEVICE": [
+        {
+            "DeviceType": "HAILO8",
+            "RuntimeAgent": "HAILORT",
+            "SupportedDeviceTypes": "HAILORT/HAILO8"
+        }
+    ],
+    "PRE_PROCESS": [
+        {
+            "InputN": 1,
+            "InputH": 112,
+            "InputW": 112,
+            "InputC": 3,
+            "InputQuantEn": true
+        }
+    ],
+    "MODEL_PARAMETERS": [
+        {
+            "ModelPath": "arcface_mobilefacenet--112x112_quant_hailort_hailo8_1.hef"
+        }
+    ],
+    "POST_PROCESS": [
+        {
+            "OutputPostprocessType": "None",
+            "LabelsPath": "labels.json",
+            "PythonFile": "HailoDequantize.py"
+        }
+    ]
+}

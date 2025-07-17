@@ -1,0 +1,32 @@
+# app/cfg/production.yaml
+# 生产环境特定配置。
+# 这些配置会覆盖 default.yaml 和其他环境 YAML 中的同名项。
+# 生产环境的配置应经过严格审查，确保安全性和性能。
+
+app:
+  title: "FastAPI人脸识别服务"
+  debug: false # 生产环境务必关闭调试模式，避免泄露敏感信息和影响性能。
+  # description 和 version 如果不在此处定义，则沿用 default.yaml 的值。
+
+server:
+  host: "0.0.0.0" # 生产环境通常监听所有网络接口，以便从外部访问。
+  port: 12010 # 生产环境通常使用标准 HTTP (80) 或 HTTPS (443) 端口。
+  reload: false # 生产环境绝不能开启热重载，避免服务不稳定和性能问题。
+
+logging:
+  level: "INFO" # 生产环境通常使用 INFO 或 WARNING 级别，减少不必要的日志量。
+  file_path: "./logs/prod.log" # 生产日志单独存放。
+  max_bytes: 52428800 # 50 MB (50 * 1024 * 1024 字节)
+  backup_count: 10 # 生产环境可能需要更多的日志备份。
+
+database:
+  # 生产环境数据库连接到真实的 PostgreSQL 或 MySQL 等数据库。
+  # 强烈建议通过环境变量或秘密管理工具（如 Kubernetes Secrets, AWS Secrets Manager, HashiCorp Vault）
+  # 提供真实的连接字符串，而不是硬编码在此处。
+  url: "sqlite:///./data/prod.db" # 生产环境数据库示例URL
+  echo: false # 生产环境通常关闭 SQL 语句打印。
+
+security:
+  # 生产环境密钥必须通过环境变量或秘密管理工具提供，绝不能硬编码！
+  secret_key: "!!!_PRODUCTION_SECRET_KEY_FROM_ENV_OR_SECRET_MANAGER_!!!"
+  access_token_expire_minutes: 15 # 生产环境令牌过期时间可以短一点，增加安全性。

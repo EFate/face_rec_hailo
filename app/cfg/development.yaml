@@ -1,0 +1,25 @@
+# app/cfg/development.yaml
+# 开发环境特定配置。
+# 这些配置会覆盖 default.yaml 中的同名项。
+
+app:
+  title: "开发环境 - FastAPI人脸识别服务"
+  debug: true # 开发环境开启调试模式，提供更详细的错误信息和日志。
+
+server:
+  host: "127.0.0.1" # 开发环境通常只监听本地回环地址。
+  port: 8001 # 开发环境使用不同端口，避免与默认或其他服务冲突。
+  reload: true # 开发环境开启热重载，代码修改后自动重启服务。
+
+logging:
+  level: "DEBUG" # 开发环境日志级别设为 DEBUG，输出更详细的调试信息。
+  file_path: "./logs/dev.log" # 开发环境日志单独存放。
+  # max_bytes 和 backup_count 如果不在此处定义，则沿用 default.yaml 的值。
+
+database:
+  url: "sqlite:///./data/dev.db" # 开发环境使用独立的 SQLite 数据库文件。
+  echo: true # 开发时可能需要打印 SQL 语句进行调试。
+
+security:
+  secret_key: "dev_secret_key_for_testing_and_development" # 开发环境的密钥，用于测试。
+  access_token_expire_minutes: 60 # 开发环境令牌过期时间长一点，方便调试。
