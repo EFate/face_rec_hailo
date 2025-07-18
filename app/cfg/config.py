@@ -34,6 +34,7 @@ class AppConfig(BaseModel):
     description: str = Field("基于FastAPI、DeGirum和LanceDB构建", description="应用程序描述。")
     version: str = Field("6.0.0-Pipeline-Batch", description="应用程序版本。")
     debug: bool = Field(False, description="是否开启调试模式。")
+    max_concurrent_tasks: int = Field(2, description="系统允许的最大并发AI任务数（模型池大小）。")
     stream_default_lifetime_minutes: int = Field(10, description="视频流默认生命周期（分钟），-1表示永久。")
     stream_cleanup_interval_seconds: int = Field(60, description="清理过期视频流的后台任务运行间隔（秒）。")
     font_path: FilePath = Field(

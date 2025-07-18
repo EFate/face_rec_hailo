@@ -13,7 +13,7 @@ from pydantic import Field
 from app.cfg.logging import app_logger
 
 
-# LanceFaceSchema 和 FaceDataDAO 保持不变...
+# LanceFaceSchema 和 FaceDataDAO 接口定义保持不变
 class LanceFaceSchema(LanceModel):
     uuid: str = Field(..., description="特征记录的唯一ID")
     vector: Vector(512) = Field(description="512维的人脸特征向量")
@@ -65,7 +65,7 @@ class LanceDBFaceDataDAO(FaceDataDAO):
             app_logger.error(f"初始化 LanceDB 表失败: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"数据库表初始化失败: {e}")
 
-    # create, get_all, get_features_by_sn, delete_by_sn 方法保持不变...
+    # create, get_all, get_features_by_sn 方法保持不变...
     def create(self, name: str, sn: str, features: np.ndarray, image_path: Path) -> Dict[str, Any]:
         try:
             new_record = LanceFaceSchema(uuid=str(uuid.uuid4()), vector=features, name=name, sn=sn,
@@ -93,54 +93,48 @@ class LanceDBFaceDataDAO(FaceDataDAO):
             raise HTTPException(status_code=500, detail=f"数据库查询失败: {e}")
 
     def delete_by_sn(self, sn: str) -> int:
+        """【修复】使用正确的方式统计待删除的记录数。"""
         try:
-            initial_count = self.table.count_rows()
+            # 修复：先用 search + where 查询，再用 len() 统计数量
+            records_to_delete = self.table.search().where(f"sn = '{sn}'").to_df()
+            count_to_delete = len(records_to_delete)
+
+            if count_to_delete == 0:
+                return 0
+                
             self.table.delete(f"sn = '{sn}'")
-            final_count = self.table.count_rows()
-            deleted_count = initial_count - final_count
-            if deleted_count > 0:
-                app_logger.info(f"成功从 LanceDB 中删除 {deleted_count} 条 SN 为 '{sn}' 的记录。")
-            return deleted_count
+            app_logger.info(f"成功从 LanceDB 中删除 {count_to_delete} 条 SN 为 '{sn}' 的记录。")
+            return count_to_delete
         except Exception as e:
             app_logger.error(f"从 LanceDB 删除 SN='{sn}' 的记录失败: {e}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"数据库删除失败: {e}")
 
-    # --- 【核心优化】重构 update_by_sn 方法 ---
     def update_by_sn(self, sn: str, update_data: Dict[str, Any]) -> int:
-        """根据SN更新记录。采用更健壮的“读取-删除-新增”逻辑。"""
-        app_logger.warning("LanceDB 的更新操作通过“删除+新增”实现，可能影响性能。")
-
-        # 1. 使用 to_pandas() 一次性读取所有需要的数据
-        records_df = self.table.search().where(f"sn = '{sn}'").to_pandas()
-        if records_df.empty:
+        """【修复】使用正确的方式统计待更新的记录数，并保留原生 update 的安全性。"""
+        app_logger.info(f"正在为 SN='{sn}' 更新记录，更新内容: {update_data}")
+        
+        values_to_update = {}
+        if 'name' in update_data and update_data['name'] is not None:
+            values_to_update['name'] = update_data['name']
+        
+        if not values_to_update:
+            app_logger.warning(f"为 SN='{sn}' 调用的更新操作没有提供可更新的字段。")
             return 0
-
-        # 2. 删除所有旧记录
-        self.delete_by_sn(sn)
-
-        # 3. 遍历DataFrame，手动构建新的记录列表，确保数据完整性
-        new_records_to_add = []
-        new_name = update_data.get('name')
-
-        for index, row in records_df.iterrows():
-            new_record = LanceFaceSchema(
-                uuid=str(uuid.uuid4()),  # 必须生成新的UUID
-                vector=row['vector'],  # 从DataFrame行中明确获取vector
-                name=new_name if new_name else row['name'],  # 应用更新
-                sn=row['sn'],
-                image_path=row['image_path'],
-                registration_time=datetime.now()  # 更新注册时间
-            )
-            new_records_to_add.append(new_record)
-
-        # 4. 一次性将所有新记录添加回数据库
+        
         try:
-            if new_records_to_add:
-                self.table.add(new_records_to_add)
-            return len(new_records_to_add)
+            # 修复：使用正确的方法来统计将要被更新的记录数
+            count_to_update = len(self.table.search().where(f"sn = '{sn}'").to_df())
+            if count_to_update == 0:
+                app_logger.warning(f"尝试更新一个不存在的 SN: '{sn}'，操作已取消。")
+                return 0
+
+            # 执行原生、安全的更新操作
+            self.table.update(where=f"sn = '{sn}'", values=values_to_update)
+            app_logger.info(f"✅ 成功提交了对 {count_to_update} 条 SN 为 '{sn}' 的记录的更新请求。")
+            return count_to_update
         except Exception as e:
-            app_logger.error(f"更新 LanceDB 记录时重新添加数据失败: {e}", exc_info=True)
-            raise HTTPException(status_code=500, detail=f"数据库更新的后续写入失败: {e}")
+            app_logger.error(f"更新 SN='{sn}' 时发生错误: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"数据库更新操作失败: {e}")
 
     def search(self, embedding: np.ndarray, threshold: float, top_k: int = 1) -> Optional[Tuple[str, str, float]]:
         try:

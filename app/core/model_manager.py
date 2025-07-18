@@ -1,22 +1,19 @@
 # app/core/model_manager.py
-import asyncio
-from typing import Optional, Tuple
-from pathlib import Path
-import degirum as dg
-import cv2
-import numpy as np
 import gc
-import os
+import queue
+from typing import Tuple, Optional
 
-from app.cfg.config import AppSettings, get_app_settings, BASE_DIR
+import degirum as dg
+
+from app.cfg.config import AppSettings
 from app.cfg.logging import app_logger
-from .process_utils import get_degirum_worker_pids, cleanup_degirum_workers_by_pids
+from .process_utils import get_all_degirum_worker_pids, cleanup_degirum_workers_by_pids
 
 DeGirumModel = dg.model.Model
 
 def create_degirum_model(model_name: str, zoo_url: str) -> DeGirumModel:
-    app_logger.info(f"--- 正在加载 DeGirum 模型: '{model_name}' ---")
-    app_logger.info(f"  - 模型仓库 (Zoo URL): '{zoo_url}'")
+    """通用模型加载函数，保持不变。"""
+    app_logger.info(f"--- 正在加载 DeGirum 模型: '{model_name}' from '{zoo_url}' ---")
     try:
         model = dg.load_model(
             model_name=model_name,
@@ -30,80 +27,82 @@ def create_degirum_model(model_name: str, zoo_url: str) -> DeGirumModel:
         app_logger.exception(f"❌ 加载 DeGirum 模型 '{model_name}' 失败: {e}")
         raise RuntimeError(f"加载 DeGirum 模型 '{model_name}' 时出错: {e}") from e
 
-class ModelManager:
-    _instance = None
-    _detection_model: Optional[DeGirumModel] = None
-    _recognition_model: Optional[DeGirumModel] = None
+class ModelPool:
+    """
+    线程安全的模型池。
+    """
+    def __init__(self, settings: AppSettings, pool_size: int = 3):
+        app_logger.info(f"正在初始化包含 {pool_size} 套模型的【统一模型池】...")
+        self.settings = settings
+        self.pool_size = pool_size
+        self._pool = queue.Queue(maxsize=pool_size)
 
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super(ModelManager, cls).__new__(cls)
-            cls._instance.settings: AppSettings = get_app_settings()
-        return cls._instance
-
-    async def load_models(self):
-        if self._detection_model is None or self._recognition_model is None:
-            app_logger.info("主进程正在加载 DeGirum 模型...")
-            loop = asyncio.get_running_loop()
-            self._detection_model = await loop.run_in_executor(None, create_degirum_model, self.settings.degirum.detection_model_name, self.settings.degirum.zoo_url)
-            self._recognition_model = await loop.run_in_executor(None, create_degirum_model, self.settings.degirum.recognition_model_name, self.settings.degirum.zoo_url)
-            app_logger.info("✅ 主进程所有 DeGirum 模型加载成功。")
-            await self._run_startup_self_test()
-        else:
-            app_logger.info("主进程 DeGirum 模型已加载，跳过重复加载。")
-
-    async def _run_startup_self_test(self):
-        app_logger.info("--- 正在执行启动自检 ---")
-        test_image_path = BASE_DIR / "app" / "static" / "self_test_face.jpg"
-        if not test_image_path.exists():
-            app_logger.warning(f"自检失败：未找到测试图片 {test_image_path}。跳过自检。")
-            return
         try:
-            loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(None, self._detection_model.predict, str(test_image_path))
-            if not result.results:
-                app_logger.critical("❌ 【启动自检失败】模型无法在测试图片中检测到任何人脸！")
-                raise RuntimeError("DeGirum模型自检失败，服务无法启动。")
-            else:
-                app_logger.info(f"✅ 【启动自检成功】在测试图片中成功检测到 {len(result.results)} 张人脸。")
+            for i in range(pool_size):
+                app_logger.info(f"正在加载池中的第 {i+1}/{pool_size} 套模型...")
+                detection_model = create_degirum_model(
+                    self.settings.degirum.detection_model_name,
+                    self.settings.degirum.zoo_url
+                )
+                recognition_model = create_degirum_model(
+                    self.settings.degirum.recognition_model_name,
+                    self.settings.degirum.zoo_url
+                )
+                self._pool.put((detection_model, recognition_model))
+            app_logger.info(f"✅ 【统一模型池】初始化成功，当前包含 {self._pool.qsize()} 套可用模型。")
         except Exception as e:
-            app_logger.exception(f"❌ 自检过程中发生意外错误: {e}")
-            raise RuntimeError(f"模型自检过程中出错: {e}") from e
+            app_logger.error(f"❌ 初始化模型池失败: {e}")
+            raise
 
-    def get_models(self) -> Tuple[DeGirumModel, DeGirumModel]:
-        if self._detection_model is None or self._recognition_model is None:
-            raise RuntimeError("DeGirum 模型尚未加载。")
-        return self._detection_model, self._recognition_model
+    def acquire(self, timeout: float = 0.1) -> Optional[Tuple[DeGirumModel, DeGirumModel]]:
+        """从池中获取一套模型。"""
+        try:
+            app_logger.debug(f"尝试从模型池中获取模型 (可用: {self._pool.qsize()}/{self.pool_size})...")
+            models = self._pool.get(timeout=timeout)
+            app_logger.debug("成功获取到一套模型。")
+            return models
+        except queue.Empty:
+            app_logger.warning(
+                f"模型池资源不足！在 {timeout} 秒内无法获取到可用模型。"
+            )
+            return None
 
-    async def release_resources(self):
-        app_logger.info("主进程开始执行模型资源强制释放流程...")
-        parent_pid = os.getpid()
+    def release(self, models: Tuple[DeGirumModel, DeGirumModel]):
+        """将一套模型归还到池中。"""
+        app_logger.debug("将一套模型归还到模型池...")
+        self._pool.put(models)
+        app_logger.debug(f"归还成功 (可用: {self._pool.qsize()}/{self.pool_size})。")
 
-        app_logger.info("删除主进程中模型对象的Python引用...")
-        if self._detection_model:
-            del self._detection_model
-        if self._recognition_model:
-            del self._recognition_model
-        self._detection_model = None
-        self._recognition_model = None
-        app_logger.info("主进程Python引用已清空。")
+    def dispose(self):
+        """
+        【核心修复】应用关闭时，强制清理所有残留工作进程，然后释放模型。
+        修复了因等待模型正常释放超时而导致的程序崩溃问题。
+        """
+        app_logger.warning("正在执行【统一模型池】资源释放程序...")
+
+        # 1. 【首要步骤】强制杀死所有 DeGirum 工作进程。
+        # 这模拟了 `ps | grep | xargs kill` 的行为，避免了后续操作的超时。
+        app_logger.warning("执行全局清理：立即终止所有DeGirum残留的工作进程...")
+        try:
+            pids_to_kill = get_all_degirum_worker_pids()
+            cleanup_degirum_workers_by_pids(pids_to_kill, app_logger)
+        except Exception as e:
+            app_logger.error(f"【严重】在执行进程清理时发生意外错误: {e}", exc_info=True)
+
+
+        # 2. 清空队列并尝试释放Python模型对象。
+        app_logger.warning("正在清空模型队列并释放Python侧的模型对象...")
+        while not self._pool.empty():
+            try:
+                det_model, rec_model = self._pool.get_nowait()
+                # 即使这里因为工作进程被杀而报错，我们也捕获它并继续。
+                del det_model
+                del rec_model
+            except queue.Empty:
+                break
+            except Exception as e:
+                # 捕获因工作进程已死而导致的通信错误，这是预期的。
+                app_logger.warning(f"释放模型对象时捕获到一个预期中的错误（因为工作进程已被终止）：{e}")
         
-        app_logger.warning("执行全局清理程序，确保杀死所有DeGirum残留的工作进程...")
-        pids_to_kill = get_degirum_worker_pids(parent_pid)
-        cleanup_degirum_workers_by_pids(pids_to_kill, app_logger)
-
-        app_logger.info("强制执行垃圾回收(GC)...")
         gc.collect()
-        app_logger.info("✅ 主进程模型资源强制释放流程已全部完成。")
-
-
-# 单例实例
-model_manager = ModelManager()
-
-
-async def load_models_on_startup():
-    await model_manager.load_models()
-
-
-async def release_models_on_shutdown():
-    await model_manager.release_resources()
+        app_logger.info("✅ 【统一模型池】已清空，相关硬件资源已强制释放。")
