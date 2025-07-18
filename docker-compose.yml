@@ -2,7 +2,7 @@
 # 定义服务
 services:
   # 服务的名称
-  face-rec-service:
+  face-rec-hailo-service:
     # 构建指令
     build:
       # 'context'：构建上下文的路径。'.' 表示当前目录（即项目根目录）。
@@ -11,7 +11,7 @@ services:
       dockerfile: Dockerfile
 
     # 容器名称
-    container_name: face_recognition_service
+    container_name: face_recognition_hailo_service
 
     # 端口映射: "主机端口:容器端口"
     ports:
@@ -21,8 +21,6 @@ services:
     # 数据卷挂载: "主机路径:容器路径"
     # 路径相对于 docker-compose.yml 所在位置（项目根目录）
     volumes:
-      - ./data:/app/data
-      - ./logs:/app/logs
       - /dev:/dev
       - /lib/firmware:/lib/firmware
       - /lib/udev/rules.d:/lib/udev/rules.d

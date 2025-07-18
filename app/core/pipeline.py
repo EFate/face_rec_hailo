@@ -82,7 +82,7 @@ class FaceStreamPipeline:
 
         # 等待所有线程结束
         for t in self.threads:
-            # 优化后，线程应该能很快退出，可以将超时设置得更短
+            # 超时设置得更短
             t.join(timeout=5.0)
             if t.is_alive():
                 app_logger.error(f"【流水线 {self.stream_id}】线程 {t.name} 未能快速停止，可能被I/O阻塞。")
@@ -157,7 +157,7 @@ class FaceStreamPipeline:
         app_logger.info(f"【T2:预处理 {self.stream_id}】启动。")
         while not self.stop_event.is_set():
             try:
-                frame = self.preprocess_queue.get(timeout=1.0)
+                frame = self.preprocess_queue.get(timeout=0.2)
                 if frame is None:
                     self.inference_queue.put(None)
                     break
@@ -170,7 +170,7 @@ class FaceStreamPipeline:
         app_logger.info(f"【T3:推理-检测 {self.stream_id}】启动。")
         while not self.stop_event.is_set():
             try:
-                frame = self.inference_queue.get(timeout=1.0)
+                frame = self.inference_queue.get(timeout=0.2)
                 if frame is None:
                     self.postprocess_queue.put(None)
                     break
@@ -188,7 +188,7 @@ class FaceStreamPipeline:
         threshold = self.settings.degirum.recognition_similarity_threshold
         while not self.stop_event.is_set():
             try:
-                data = self.postprocess_queue.get(timeout=1.0)
+                data = self.postprocess_queue.get(timeout=0.2)
                 if data is None:
                     break
                 original_frame, detected_faces_data = data

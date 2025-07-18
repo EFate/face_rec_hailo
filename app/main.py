@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
 
     # 1. ❗ 初始化统一模型池，大小设置为2
     app_logger.info("--> 正在初始化模型池...")
-    model_pool = ModelPool(settings=settings, pool_size=2)
+    model_pool = ModelPool(settings=settings, pool_size=settings.app.max_concurrent_tasks)
     app.state.model_pool = model_pool
     app_logger.info("✅ 统一模型池初始化完成。")
 
