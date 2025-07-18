@@ -23,17 +23,16 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      - /dev:/dev
+      - /lib/firmware:/lib/firmware
+      - /lib/udev/rules.d:/lib/udev/rules.d
+      - /lib/modules:/lib/modules
+    devices:
+      - /dev/hailo0:/dev/hailo0
+    privileged: true
     environment:
-      - UI_HOST=${UI_BACKEND_HOST}
+      - UI_HOST=${UI_HOST}
 
-    # GPU 资源配置 (Docker Compose 推荐方式)
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
 
     # 重启策略: 除非手动停止，否则容器总是在退出后重启
     restart: unless-stopped

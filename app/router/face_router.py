@@ -55,9 +55,9 @@ async def register_face(
 ):
     """
     上传一张图片并关联到指定的人员信息。
-    - **name**: 人员姓名 (表单字段)
-    - **sn**: 人员唯一标识 (表单字段)
-    - **image_file**: 包含清晰人脸的图片文件 (文件部分)
+    - name: 人员姓名 (表单字段)
+    - sn: 人员唯一标识 (表单字段)
+    - image_file: 包含清晰人脸的图片文件 (文件部分)
     """
     image_bytes = await image_file.read()
     if not image_bytes:

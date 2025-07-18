@@ -12,7 +12,7 @@ from app.cfg.config import get_app_settings, DATA_DIR
 from app.cfg.logging import app_logger
 from app.core.model_manager import model_manager, load_models_on_startup, release_models_on_shutdown
 from app.router.face_router import router as face_router
-# ✅ 导入新的服务类
+
 from app.service.face_operation_service import FaceOperationService
 from app.service.stream_manager_service import StreamManagerService
 from app.schema.face_schema import ApiResponse
@@ -64,7 +64,7 @@ async def lifespan(app: FastAPI):
             pass
         app_logger.info("✅ 视频流清理任务已取消。")
 
-    # 2. 优雅地关闭所有活动的视频流 (通过StreamManagerService)
+    # 2. 关闭所有活动的视频流 (通过StreamManagerService)
     if hasattr(app.state, 'stream_manager_service'):
         await app.state.stream_manager_service.stop_all_streams()
 

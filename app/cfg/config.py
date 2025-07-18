@@ -20,7 +20,7 @@ ENV_FILE = BASE_DIR / ".env"
 LOGS_DIR = BASE_DIR / "logs"
 CONFIG_DIR = BASE_DIR / "app" / "cfg"
 DATA_DIR = BASE_DIR / "data"
-# 新增: 定义模型仓库（Zoo）的路径
+# 定义模型仓库（Zoo）的路径
 MODEL_ZOO_DIR = BASE_DIR / "data" / "zoo"
 LANCEDB_DATA_DIR = BASE_DIR / "data" / "lancedb"
 
@@ -58,7 +58,7 @@ class LoggingConfig(BaseModel):
         if self.file_path: self.file_path.parent.mkdir(parents=True, exist_ok=True)
 
 
-# ✅ 核心修改: 使用 DeGirum 的配置
+
 class DeGirumConfig(BaseModel):
     # 模型仓库（Zoo）的URL，这里使用本地文件系统
     zoo_url: str = Field(f"file://{MODEL_ZOO_DIR.absolute()}", description="DeGirum 模型仓库的URL。")
